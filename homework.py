@@ -1,13 +1,23 @@
 import logging
 import sys
-import time
 from http import HTTPStatus
+import time
 
 import requests
 import telegram
-from exceptions import FalseStatusCodeError, RequestError
-from settings import (ENDPOINT, HEADERS, PRACTICUM_TOKEN, TELEGRAM_CHAT_ID,
-                      TELEGRAM_TOKEN)
+
+from exceptions import (
+    FalseStatusCodeError,
+    RequestError,
+)
+from settings import (
+    ENDPOINT,
+    HEADERS,
+    PRACTICUM_TOKEN,
+    TELEGRAM_CHAT_ID,
+    TELEGRAM_TOKEN,
+)
+
 
 RETRY_PERIOD = 600
 HOMEWORK_VERDICTS = {
@@ -19,15 +29,8 @@ HOMEWORK_VERDICTS = {
 
 def check_tokens():
     """Проверяет доступность переменных окружения."""
-    variables = [PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID]
-    for token in variables:
-        if token is None:
-            logging.critical(
-                'Отсутствует пересенная окружения',
-                exc_info=True
-            )
-            return False
-    return True
+    variables = (PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID,)
+    return all(variables)
 
 
 def send_message(bot, message):
@@ -97,6 +100,10 @@ def parse_status(homework):
 def main():
     """Основная логика работы бота."""
     if check_tokens() is False:
+        logging.critical(
+            'Отсутствует переменная окружения',
+            exc_info=True
+        )
         sys.exit('Ошибка переменной окружения.')
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
@@ -105,13 +112,13 @@ def main():
         try:
             response = get_api_answer(timestamp)
             check_response(response)
-            homework = response['homeworks'][0]
-            message = parse_status(homework)
+            if [] in response.values():
+                message = 'Статус не изменился. Ожидайте.'
+            else:
+                homework = response['homeworks'][0]
+                message = parse_status(homework)
             send_message(bot, message)
             timestamp = response.get('current_date', timestamp)
-        except IndexError:
-            message = 'Статус не изменился. Ожидайте.'
-            send_message(bot, message)
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             if message != previous_message:
@@ -139,4 +146,4 @@ if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt:
-        print('Программа принудительно остановлена.')
+        logging.debug('Программа принудительно остановлена.')
