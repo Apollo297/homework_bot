@@ -112,7 +112,8 @@ def main():
         try:
             response = get_api_answer(timestamp)
             check_response(response)
-            if [] in response.values():
+            homeworks = response['homeworks']
+            if not homeworks:
                 message = 'Статус не изменился. Ожидайте.'
             else:
                 homework = response['homeworks'][0]
